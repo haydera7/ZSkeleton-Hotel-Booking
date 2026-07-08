@@ -1,25 +1,35 @@
 import mongoose from "mongoose";
 
-let isConnected = false;
+// Cache the connection at global scope so it survives across
+// Vercel serverless function invocations (warm containers).
+let cached = global.mongoose;
+if (!cached) {
+    cached = global.mongoose = { conn: null, promise: null };
+}
 
 const connectDB = async () => {
-    if (isConnected) {
-        return; // reuse existing connection — avoids reconnecting on every request
+    if (cached.conn) {
+        return cached.conn; // reuse existing connection
+    }
+
+    if (!cached.promise) {
+        cached.promise = mongoose.connect(`${process.env.MONGODB_URI}/hotel-booking`, {
+            serverSelectionTimeoutMS: 10000,
+            socketTimeoutMS: 45000,
+            maxPoolSize: 10,
+            minPoolSize: 1,
+        });
     }
 
     try {
-        const db = await mongoose.connect(`${process.env.MONGODB_URI}/hotel-booking`, {
-            serverSelectionTimeoutMS: 10000, // fail fast if Atlas unreachable
-            socketTimeoutMS: 45000,          // close idle sockets after 45s
-            maxPoolSize: 10,                 // keep up to 10 connections in pool
-            minPoolSize: 1,                  // always keep 1 ready
-        });
-
-        isConnected = db.connections[0].readyState === 1;
+        cached.conn = await cached.promise;
         console.log("Database connected");
     } catch (error) {
+        cached.promise = null; // reset so next call retries
         console.error("Database connection error:", error.message);
     }
+
+    return cached.conn;
 }
 
 export default connectDB;
