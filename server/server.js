@@ -52,4 +52,18 @@ const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, ()=>{
     console.log(`Server is running on port ${PORT}`)
+
+    // Keep Render free-tier server awake by pinging itself every 14 minutes.
+    // Render puts free services to sleep after 15 min of inactivity.
+    // This only runs when a RENDER_EXTERNAL_URL env var is set (i.e. on Render).
+    if (process.env.RENDER_EXTERNAL_URL) {
+        setInterval(async () => {
+            try {
+                const res = await fetch(`${process.env.RENDER_EXTERNAL_URL}/`);
+                console.log(`[keep-alive] ping → ${res.status}`);
+            } catch (err) {
+                console.warn('[keep-alive] ping failed:', err.message);
+            }
+        }, 14 * 60 * 1000); // every 14 minutes
+    }
 })
