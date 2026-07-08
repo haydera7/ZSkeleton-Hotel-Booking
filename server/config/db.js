@@ -2,31 +2,24 @@ import mongoose from "mongoose";
 
 let isConnected = false;
 
-const  connectDB = async () => {
+const connectDB = async () => {
+    if (isConnected) {
+        return; // reuse existing connection — avoids reconnecting on every request
+    }
 
-    //   if (isConnected) {
-    //     return;
-    // }
-      try {
-        mongoose.connection.on('connected', ()=> console.log("Database connected"));
-           await mongoose.connect(`${process.env.MONGODB_URI}/hotel-booking`)
-      } 
+    try {
+        const db = await mongoose.connect(`${process.env.MONGODB_URI}/hotel-booking`, {
+            serverSelectionTimeoutMS: 10000, // fail fast if Atlas unreachable
+            socketTimeoutMS: 45000,          // close idle sockets after 45s
+            maxPoolSize: 10,                 // keep up to 10 connections in pool
+            minPoolSize: 1,                  // always keep 1 ready
+        });
 
-    // try {
-
-    //     const db = await mongoose.connect(
-    //         `${process.env.MONGODB_URI}/hotel-booking`
-    //     );
-
-    //     isConnected = db.connections[0].readyState;
-
-    //     console.log("Database connected");
-
-    // }
-      catch (error) {
-          console.log(error.message)
-      }
+        isConnected = db.connections[0].readyState === 1;
+        console.log("Database connected");
+    } catch (error) {
+        console.error("Database connection error:", error.message);
+    }
 }
-
 
 export default connectDB;
