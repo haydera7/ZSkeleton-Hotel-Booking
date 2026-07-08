@@ -16,7 +16,23 @@ connectDB();
 
 const app = express();
 
-app.use(cors())
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    process.env.FRONTEND_URL,
+].filter(Boolean);
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, Postman)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.some(o => origin.startsWith(o))) {
+            return callback(null, true);
+        }
+        return callback(new Error(`CORS: origin ${origin} not allowed`));
+    },
+    credentials: true,
+}))
 
 // API to Stripe webhook
 app.post('/api/stripe', express.raw({type: "application/json"}), stripeWebhooks)
