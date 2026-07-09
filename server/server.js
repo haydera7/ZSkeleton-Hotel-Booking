@@ -40,6 +40,12 @@ app.post('/api/stripe', express.raw({type: "application/json"}), stripeWebhooks)
 //middleware
 app.use(express.json())
 
+// Ensure DB connection for serverless functions
+app.use(async (req, res, next) => {
+    await connectDB();
+    next();
+});
+
 app.get('/', (req,res)=> res.send("API is working "))
 app.use('/api/auth', authRouter)
 app.use('/api/user', userRouter)
